@@ -1,5 +1,5 @@
 // 坐标系缩放
-#define PROJECTION_SCALE  2.
+#define PROJECTION_SCALE  1.
 
 // 球体的球心位置
 #define SPHERE_POS vec3(0, 0, -2)
@@ -9,7 +9,15 @@
 #define SPHERE_KD vec3(1)
 
 // 相机视点位
-#define CAMERA_POS vec3(0, 0, 2)
+#define CAMERA_POS mat3(cos(iTime*2.),0,sin(iTime*2.),0,1,0,-sin(iTime*2.),0,cos(iTime*2.))*(vec3(1, 0, 0)-SPHERE_POS)+SPHERE_POS
+
+// #define CAMERA_POS vec3(2.*cos(iTime), 0, 2.*sin(iTime))-vec3(0, 0, 2)
+
+// 相机目标点
+#define CAMERA_TARGET vec3(0, 0, -2)
+// 上方向
+#define CAMERA_UP vec3(0, 1, 0)
+
 // 近裁剪距离
 #define CAMERA_NEAR 0.1
 // 远裁剪距离
@@ -21,7 +29,7 @@
 #define RAYMARCH_PRECISION 0.001
 
 // 点光源位置
-#define LIGHT_POS vec3(cos(iTime), 1, 0)
+#define LIGHT_POS vec3(1, 1, 0)
 
 // 相邻点的抗锯齿的行列数
 #define AA 3
@@ -65,11 +73,23 @@ vec3 AddLight(vec3 positon) {
   return diffuse + amb;
 }
 
+// 视图旋转矩阵
+mat3 RotateMatrix() {
+  //基向量c，视线
+  vec3 c = normalize(CAMERA_POS - CAMERA_TARGET);
+  //基向量a，视线和上方向的垂线
+  vec3 a = cross(CAMERA_UP, c);
+  //基向量b，修正上方向
+  vec3 b = cross(c, a);
+  //正交旋转矩阵
+  return mat3(a, b, c);
+}
+
 // 光线推进
 vec3 RayMarch(vec2 coord) {
   float d = CAMERA_NEAR;
   // 从相机视点到当前片元的射线
-  vec3 rd = RayDir(coord);
+  vec3 rd = normalize(RotateMatrix() * vec3(coord, -1));
   // 片元颜色
   vec3 color = vec3(0);
   for(int i = 0; i < RAYMARCH_TIME && d < CAMERA_FAR; i++) {

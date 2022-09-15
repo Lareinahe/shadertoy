@@ -1,5 +1,5 @@
 // 坐标系缩放
-#define PROJECTION_SCALE  2.
+#define PROJECTION_SCALE  1.
 
 // 球体的球心位置
 #define SPHERE_POS vec3(0, 0, -2)
@@ -9,7 +9,7 @@
 #define SPHERE_KD vec3(1)
 
 // 相机视点位
-#define CAMERA_POS vec3(0, 0, 2)
+#define CAMERA_POS vec3(1, 0, 0)
 // 近裁剪距离
 #define CAMERA_NEAR 0.1
 // 远裁剪距离
@@ -21,7 +21,8 @@
 #define RAYMARCH_PRECISION 0.001
 
 // 点光源位置
-#define LIGHT_POS vec3(cos(iTime), 1, 0)
+// #define LIGHT_POS vec3(cos(iTime), 1, 0)
+#define LIGHT_POS vec3(1, 1, 0)
 
 // 相邻点的抗锯齿的行列数
 #define AA 3
@@ -33,7 +34,7 @@ vec2 ProjectionCoord(in vec2 coord) {
 
 //从相机视点到片元的射线
 vec3 RayDir(in vec2 coord) {
-  return normalize(vec3(coord, 0) - CAMERA_POS);
+  return normalize(vec3(coord, -1) - CAMERA_POS);
 }
 
 //球体的SDF模型

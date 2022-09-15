@@ -63,7 +63,7 @@ vec4 LineAA(vec2 fragCoord, in vec2 A, in vec2 B, in float lineWidth, in vec4 li
   vec4 color = vec4(0);
   // 行列的一半
   float aa2 = float(AA / 2);
-  // 逐行列变了
+  // 逐行列遍历
   for(int y = 0; y < AA; y++) {
     for(int x = 0; x < AA; x++) {
       // 基于像素的偏移距离
