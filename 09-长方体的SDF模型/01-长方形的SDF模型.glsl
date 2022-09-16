@@ -1,19 +1,15 @@
 // 坐标系缩放
 #define ProjectionScale 1.
 
-// 半径
-// #define r .5+.4 *sin(iTime*2.)
-
-#define r .3
-
 // 投影坐标系
 vec2 ProjectionCoord(in vec2 coord) {
   return ProjectionScale * 2. * (coord - 0.5 * iResolution.xy) / min(iResolution.x, iResolution.y);
 }
 
-// 圆形的sdf模型
-float sdfCircle(vec2 p) {
-  return length(p) - r;
+// 矩形的sdf模型
+float SDFRect(vec2 coord, vec2 size) {
+  vec2 d = abs(coord) - size;
+  return length(max(d, 0.)) + min(max(d.x, d.y), 0.);
 }
 
 // 显示距离场
@@ -32,7 +28,7 @@ void selectTest(out vec3 color, vec2 curCoord) {
     // 鼠标的投影坐标位
     vec2 mouseCoord = ProjectionCoord(iMouse.xy);
     // 鼠标到圆形的有向距离
-    float md = sdfCircle(mouseCoord);
+    float md = SDFRect(mouseCoord, vec2(0.6, 0.4));
     // 当前片元到鼠标的距离
     float a = length(curCoord - mouseCoord);
     //鼠标到圆形的有向距离的绝对值
@@ -45,9 +41,9 @@ void selectTest(out vec3 color, vec2 curCoord) {
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   // 投影坐标
   vec2 coord = ProjectionCoord(fragCoord);
-  // 当前片元到圆形的有向距离
-  float cd = sdfCircle(coord);
-  // 当有向距离小于0时，绘制圆形
+  // 当前片元到矩形的有向距离
+  float cd = SDFRect(coord, vec2(0.6, 0.4));
+  // 当有向距离小于0时，绘制矩形
   vec3 color = SdfHelper(cd);
   // 鼠标选择测试
   selectTest(color, coord);

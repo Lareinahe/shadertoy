@@ -1,15 +1,15 @@
 // 坐标系缩放
 #define PROJECTION_SCALE  1.
 
-// 球体的球心位置
-#define SPHERE_POS vec3(0, 0, -2)
-// 球体的半径
-#define SPHERE_R 1.0
-// 球体的漫反射系数
-#define SPHERE_KD vec3(1)
+// 长方体的中心位置
+#define RECT_POS vec3(0, 0, -2)
+// 长方体的尺寸
+#define RECT_SIZE vec3(.8,.4,.5)
+// 长方体的漫反射系数
+#define RECT_KD vec3(1)
 
 // 相机视点位
-#define CAMERA_POS mat3(cos(iTime),0,sin(iTime),0,1,0,-sin(iTime),0,cos(iTime))*(vec3(1, 0, 0)-SPHERE_POS)+SPHERE_POS
+#define CAMERA_POS mat3(cos(iTime),0,sin(iTime),0,1,0,-sin(iTime),0,cos(iTime))*(vec3(1, 1, 0)-RECT_POS)+RECT_POS
 
 // 相机目标点
 #define CAMERA_TARGET vec3(0, 0, -2)
@@ -17,17 +17,17 @@
 #define CAMERA_UP vec3(0, 1, 0)
 
 // 近裁剪距离
-#define CAMERA_NEAR 0.1
+#define CAMERA_NEAR 0.01
 // 远裁剪距离
 #define CAMERA_FAR 128.
 
 // 光线推进次数
-#define RAYMARCH_TIME 20
+#define RAYMARCH_TIME 40
 // 当推进后的点位距离物体表面小于RAYMARCH_PRECISION时，默认此点为物体表面的点
 #define RAYMARCH_PRECISION 0.001
 
 // 点光源位置
-#define LIGHT_POS vec3(1, 1, 0)
+#define LIGHT_POS vec3(1, 4, 1)
 
 // 相邻点的抗锯齿的行列数
 #define AA 3
@@ -37,24 +37,20 @@ vec2 ProjectionCoord(in vec2 coord) {
   return PROJECTION_SCALE * 2. * (coord - 0.5 * iResolution.xy) / min(iResolution.x, iResolution.y);
 }
 
-//从相机视点到片元的射线
-vec3 RayDir(in vec2 coord) {
-  return normalize(vec3(coord, 0) - CAMERA_POS);
+// 长方体的的SDF模型
+float SDFRect(vec3 coord) {
+  vec3 d = abs(coord - RECT_POS) - RECT_SIZE;
+  return length(max(d, 0.)) + min(max(d.x, max(d.y, d.z)), 0.);
 }
 
-//球体的SDF模型
-float SDFSphere(vec3 coord) {
-  return length(coord - SPHERE_POS) - SPHERE_R;
-}
-
-// 计算球体的法线
+// 计算长方体的法线
 vec3 SDFNormal(in vec3 p) {
   const float h = 0.0001;
   const vec2 k = vec2(1, -1);
-  return normalize(k.xyy * SDFSphere(p + k.xyy * h) +
-    k.yyx * SDFSphere(p + k.yyx * h) +
-    k.yxy * SDFSphere(p + k.yxy * h) +
-    k.xxx * SDFSphere(p + k.xxx * h));
+  return normalize(k.xyy * SDFRect(p + k.xyy * h) +
+    k.yyx * SDFRect(p + k.yyx * h) +
+    k.yxy * SDFRect(p + k.yxy * h) +
+    k.xxx * SDFRect(p + k.xxx * h));
 }
 
 // 打光
@@ -64,7 +60,7 @@ vec3 AddLight(vec3 positon) {
   // 当前着色点到光源的方向
   vec3 lightDir = normalize(LIGHT_POS - positon);
   // 漫反射
-  vec3 diffuse = SPHERE_KD * max(dot(lightDir, n), 0.);
+  vec3 diffuse = RECT_KD * max(dot(lightDir, n), 0.);
   // 环境光
   float amb = 0.15 + dot(-lightDir, n) * 0.2;
   // 最终颜色
@@ -93,9 +89,9 @@ vec3 RayMarch(vec2 coord) {
   for(int i = 0; i < RAYMARCH_TIME && d < CAMERA_FAR; i++) {
     // 光线推进后的点位
     vec3 p = CAMERA_POS + d * rd;
-    // 光线推进后的点位到球体的有向距离
-    float curD = SDFSphere(p);
-    // 若有向距离小于一定的精度，默认此点在球体表面
+    // 光线推进后的点位到长方体的有向距离
+    float curD = SDFRect(p);
+    // 若有向距离小于一定的精度，默认此点在长方体表面
     if(curD < RAYMARCH_PRECISION) {
       color = AddLight(p);
       break;
