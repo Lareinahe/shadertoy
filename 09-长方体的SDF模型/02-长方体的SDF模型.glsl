@@ -16,11 +16,10 @@
 // 上方向
 #define CAMERA_UP vec3(0, 1, 0)
 
-// 近裁剪距离
-#define CAMERA_NEAR 0.01
-// 远裁剪距离
-#define CAMERA_FAR 128.
-
+// 光线推进的起始距离 
+#define RAYMARCH_NEAR 0.1
+// 光线推进的最远距离
+#define RAYMARCH_FAR 128.
 // 光线推进次数
 #define RAYMARCH_TIME 40
 // 当推进后的点位距离物体表面小于RAYMARCH_PRECISION时，默认此点为物体表面的点
@@ -81,12 +80,12 @@ mat3 RotateMatrix() {
 
 // 光线推进
 vec3 RayMarch(vec2 coord) {
-  float d = CAMERA_NEAR;
+  float d = RAYMARCH_NEAR;
   // 从相机视点到当前片元的射线
   vec3 rd = normalize(RotateMatrix() * vec3(coord, -1));
   // 片元颜色
   vec3 color = vec3(0);
-  for(int i = 0; i < RAYMARCH_TIME && d < CAMERA_FAR; i++) {
+  for(int i = 0; i < RAYMARCH_TIME && d < RAYMARCH_FAR; i++) {
     // 光线推进后的点位
     vec3 p = CAMERA_POS + d * rd;
     // 光线推进后的点位到长方体的有向距离

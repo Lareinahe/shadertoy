@@ -10,11 +10,11 @@
 
 // 相机视点位
 #define CAMERA_POS vec3(0, 0, 2)
-// 近裁剪距离
-#define CAMERA_NEAR 0.1
-// 远裁剪距离
-#define CAMERA_FAR 128.
 
+// 光线推进的起始距离 
+#define RAYMARCH_NEAR 0.1
+// 光线推进的最远距离
+#define RAYMARCH_FAR 128.
 // 光线推进次数
 #define RAYMARCH_TIME 20
 // 当推进后的点位距离物体表面小于RAYMARCH_PRECISION时，默认此点为物体表面的点
@@ -36,13 +36,13 @@ float SDFSphere(vec3 coord) {
 }
 
 // 光线推进
-vec3 RaySphere(vec2 coord) {
-  float d = CAMERA_NEAR;
+vec3 RayMarch(vec2 coord) {
+  float d = RAYMARCH_NEAR;
   // 从相机视点到当前片元的射线
   vec3 rd = RayDir(coord);
   // 片元颜色
   vec3 color = vec3(0);
-  for(int i = 0; i < RAYMARCH_TIME && d < CAMERA_FAR; i++) {
+  for(int i = 0; i < RAYMARCH_TIME && d < RAYMARCH_FAR; i++) {
     // 光线推进后的点位
     vec3 p = CAMERA_POS + d * rd;
     // 光线推进后的点位到球体的有向距离
@@ -66,7 +66,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   // 当前片元的栅格图像位
   vec2 coord = ProjectionCoord(fragCoord.xy);
   // 光线推进
-  vec3 color = RaySphere(coord);
+  vec3 color = RayMarch(coord);
   // 最终颜色
   fragColor = vec4(color, 1);
 }
