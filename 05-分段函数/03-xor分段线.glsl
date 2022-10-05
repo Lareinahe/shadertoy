@@ -64,8 +64,10 @@ vec4 Segment(in vec2 C, in vec2 A, in vec2 B, in float lineWidth, in vec4 lineCo
 
 // 分段算法
 float PiecewiseFn(float x) {
-  // return mod(x, 2.);
-  return floor(mod(x, 2.));
+  int ip = int(round(x + .5));
+  // return round(x);
+  // return round(x + .5);
+  return float(ip & 1);
 }
 
 //分段路径(当前点coord,起点star，结束点end，段数segs，线宽lineWidth，颜色sinColor)
