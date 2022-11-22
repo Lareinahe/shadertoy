@@ -51,6 +51,12 @@ int curObj = 0;
 // 要渲染的对象集合
 float SDFArray[3];
 
+// 光线推进数据的结构体
+struct RayMarchData {
+  vec3 pos;
+  bool crash;
+};
+
 // 投影坐标系
 vec2 ProjectionCoord(in vec2 coord) {
   return PROJECTION_SCALE * 2. * (coord - 0.5 * iResolution.xy) / min(iResolution.x, iResolution.y);
@@ -111,11 +117,7 @@ mat3 RotateMatrix() {
   return mat3(a, b, c);
 }
 
-// 光线推进数据的结构体，再来个ID
-struct RayMarchData {
-  vec3 pos;
-  bool crash;
-};
+
 
 // 将RayMarch与渲染分离
 RayMarchData RayMarch(vec3 ro, vec3 rd) {
@@ -162,8 +164,8 @@ vec3 AddLight(vec3 positon, vec3 kd) {
   // 漫反射
   vec3 diffuse = kd * max(dot(lightDir, n), 0.);
   // 投影
-  // float shadow = Shadow(positon, normalize(LIGHT_POS - positon));
-  float shadow = SoftShadow(positon, normalize(LIGHT_POS - positon), 8.);
+  // float shadow = Shadow(positon, lightDir);
+  float shadow = SoftShadow(positon, lightDir, 8.);
   diffuse *= shadow;
 
   // 环境光

@@ -44,7 +44,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   // 背景色
   vec4 backgroundColor = vec4(0, 0, 0, 1);
   // 投影坐标系辅助对象
-  vec4 projectionHelper = ProjectionHelper(coord, 2., vec4(0, 1, 0, 1), vec4(1, 0, 0, 1), 2., vec4(1));
+  vec4 projectionHelper = ProjectionHelper(coord, 2., vec4(0, 1, 0, 1), vec4(1, 0, 0, 1), 1., vec4(1));
   // 最终的颜色
   fragColor = backgroundColor + projectionHelper;
 }
