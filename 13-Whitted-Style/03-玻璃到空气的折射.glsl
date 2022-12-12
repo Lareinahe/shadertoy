@@ -1,17 +1,18 @@
 // 坐标系缩放
 #define PROJECTION_SCALE  1.
 
-// 球体的球心位置
-#define SPHERE_POS vec3(0, 1, -4)
 // 球体的半径
 #define SPHERE_R 1.2
+// 球体的球心位置
+#define SPHERE_POS vec3(0, SPHERE_R, -4)
 // 球体的漫反射系数
-#define SPHERE_KD vec3(0,0.6,0.9)
+// #define SPHERE_KD vec3(1,0,0.5)
+#define SPHERE_KD vec3(0,0.72,1)
 
 // 相机视点位
 #define CAMERA_POS vec3(2, 3, 0)
 // 相机目标点
-#define CAMERA_TARGET vec3(0, 0, -4)
+#define CAMERA_TARGET vec3(0, 0.6, -4)
 // 上方向
 #define CAMERA_UP vec3(0, 1, 0)
 
@@ -42,15 +43,20 @@
 // 栅格图像的z位置
 #define SCREEN_Z -1.
 
+// 玻璃折射率
+#define GLASS_REFRACTIVITY 1.5
+#define GLASS_REFRACTIVITY_INVERT 1./GLASS_REFRACTIVITY
+
 // 要渲染的对象集合
 float SDFArray[2];
 
 /* 
-光线(射线)碰到的物体:
+距离场最小的物体:
 0 地面
 1 球体
  */
-int curObj = 0;
+int minObj = 0;
+
 
 // RayMarch 数据的结构体
 struct RayMarchData {
@@ -60,10 +66,12 @@ struct RayMarchData {
   int obj;
   // 射线碰撞到的着色点位置
   vec3 ro;
-  // 射线碰撞到着色点时的弹射方向
-  vec3 rd;
+  // 射线碰撞到着色点时的反弹方向
+  vec3 reflect;
   // 射线碰撞到的着色点的颜色
   vec3 color; 
+  // 法线
+  vec3 normal;
 };
 
 // 投影坐标系
@@ -85,13 +93,12 @@ float SDFPlane(vec3 coord) {
 float SDFAll(vec3 coord) {
   SDFArray[0] = SDFPlane(coord);
   SDFArray[1] = SDFSphere(coord);
+  
   float min = SDFArray[0];
-  curObj = 0;
-  for(int i = 1; i < 2; i++) {
-    if(min > SDFArray[i]) {
-      min = SDFArray[i];
-      curObj = i;
-    }
+  minObj = 0;
+  if(SDFArray[1]<SDFArray[0]){
+    min = SDFArray[1];
+    minObj = 1;
   }
   return min;
 }
@@ -129,10 +136,10 @@ float Checkers(in vec2 uv) {
 
 // 获取漫反射系数
 vec3 getKD(vec3 pos){
-  if(curObj == 0) {
+  if(minObj == 0) {
     float check = Checkers(pos.xz);
     return vec3(check * 0.8 + 0.2);
-  } else if(curObj == 1) {
+  } else if(minObj == 1) {
     return SPHERE_KD;
   }
 }
@@ -144,36 +151,49 @@ vec3 AddLight(vec3 positon,vec3 n,vec3 kd) {
   // 漫反射
   vec3 diffuse = kd * max(dot(lightDir, n), 0.);
   // 投影
-  float shadow = SoftShadow(positon, lightDir, 8.);
-  diffuse *= shadow;
+  float shadow = SoftShadow(positon, lightDir, 16.);
+  diffuse *= shadow+0.25;
   // 最终颜色
   return diffuse;
 }
 
+// 根据索引计算SDF
+float getSDFbyInd(int ind,vec3 p){
+  if(ind==0){
+    return SDFPlane(p);
+  }else if(ind==1){
+    return SDFSphere(p);
+  }else{
+    return SDFAll(p);
+  }
+}
+
 // 将RayMarch与渲染分离
-RayMarchData RayMarch(vec3 ro, vec3 rd) {
+RayMarchData RayMarch(vec3 ro, vec3 rd,int curSDF) {
   // 最近距离
   float d = RAYMARCH_NEAR;
   // 建立RayMarchData数据
   RayMarchData rm;
-  rm = RayMarchData(false,0,vec3(0),vec3(0),vec3(0));
+  rm = RayMarchData(false,0,vec3(0),vec3(0),vec3(0),vec3(0));
   for(int i = 0; i < RAYMARCH_TIME && d < RAYMARCH_FAR; i++) {
     // 光线推进后的点位
     vec3 p = ro + d * rd;
     // 光线推进后的点位到模型的有向距离
-    float curD = SDFAll(p);
+    float curD = getSDFbyInd(curSDF,p);
+    curD=abs(curD);
     // 若有向距离小于一定的精度，默认此点在模型表面
     if(curD < RAYMARCH_PRECISION) {
       // 发生碰撞
       rm.crash=true;
       // 碰撞到的物体
-      rm.obj=curObj;
+      rm.obj=minObj;
       // 光源
       rm.ro=p;
       // 当前着色点的法线
       vec3 n = SDFNormal(p);
+      rm.normal=n;
       // 光线反弹方向
-      rm.rd=reflect(rd,n);
+      rm.reflect=reflect(rd,n);
       // 碰到的着色点的漫反射系数
       vec3 kd=getKD(p);
       // 碰到的着色点的颜色
@@ -186,31 +206,38 @@ RayMarchData RayMarch(vec3 ro, vec3 rd) {
   return rm;
 }
 
-
 // 渲染
 vec3 Render(vec3 rd) {
-  // 初始RayMarch数据
-  RayMarchData rm0 = RayMarch(CAMERA_POS, rd);
+  // 初始RayMarch数据,可以打到球体和平面表面
+  RayMarchData rm0 = RayMarch(CAMERA_POS, rd,-1);
   // 颜色
   vec3 color=rm0.color;
   // 球体
-  if(rm0.obj==1){
+  if(rm0.crash&&rm0.obj==1){
     // 光线反弹的衰减系数
-    float ratio=0.6;
-    // 暂存数据
-    vec3 curRo=rm0.ro;
-    vec3 curRd=rm0.rd;
-    for(int i=0;i<3;i++){
-      // 下一次RayMarch数据
-      RayMarchData rmNext = RayMarch(curRo, curRd); 
-      if(rmNext.crash){
-        color=color*0.4+rmNext.color*ratio;
-        curRo=rmNext.ro;
-        curRd=rmNext.rd;
-        ratio*=ratio;
-      }else{
-        break;
+    float ratio0=0.7;
+    float ratio1=1.-ratio0;
+
+    // 计算光线进入球体时的入射方向
+    vec3 incidentDir=refract(rm0.reflect,rm0.normal,GLASS_REFRACTIVITY_INVERT);
+    // 基于入射方向，在球体内部追踪球体
+    RayMarchData rm1 = RayMarch(rm0.ro, incidentDir,1);
+    if(rm1.crash){
+      // 计算光线出球体时的出射方向
+      vec3 outDir=refract(rm1.reflect,rm1.normal,GLASS_REFRACTIVITY);
+      // 基于出射方向，追踪平面
+      RayMarchData rm2 = RayMarch(rm1.ro, outDir,0);
+      if(rm2.crash){
+        // 折射颜色
+        color=color*ratio1+rm2.color*color;
       }
+    }
+
+    // 反射
+    RayMarchData rmNext = RayMarch(rm0.ro, rm0.reflect,-1); 
+    if(rmNext.crash){
+      // 在折射颜色的基础上，合成反射颜色
+      color=color*ratio1+rmNext.color*ratio0;
     }
   }
   return color;

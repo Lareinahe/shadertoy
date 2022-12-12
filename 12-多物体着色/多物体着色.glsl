@@ -42,12 +42,13 @@
 #define SCREEN_Z -1.
 
 /* 
-当前要渲染的对象:
+距离场最小的对象:
 0 地面
 1 球体
 2 长方体
  */
-int curObj = 0;
+int minObj = 0;
+
 // 要渲染的对象集合
 float SDFArray[3];
 
@@ -85,11 +86,11 @@ float SDFAll(vec3 coord) {
   SDFArray[2] = SDFRect(coord);
 
   float min = SDFArray[0];
-  curObj = 0;
+  minObj = 0;
   for(int i = 1; i < 3; i++) {
     if(min > SDFArray[i]) {
       min = SDFArray[i];
-      curObj = i;
+      minObj = i;
     }
   }
   return min;
@@ -208,7 +209,7 @@ vec3 Render(vec2 coord, vec2 px, vec2 py) {
     vec3 pos = rm.pos;
     // 漫反射系数
     vec3 kd = vec3(0);
-    if(curObj == 0) {
+    if(minObj == 0) {
       //将px、py变换至相机世界
       vec3 rdx = normalize(rotateMatrix * vec3(px, SCREEN_Z));
       vec3 rdy = normalize(rotateMatrix * vec3(py, SCREEN_Z));
@@ -217,9 +218,9 @@ vec3 Render(vec2 coord, vec2 px, vec2 py) {
       vec3 ddy = rd / rd.y - rdy / rdy.y;
       float check = CheckersGrad(pos.xz, ddx.xz, ddy.xz);
       kd = vec3(check * 0.8 + 0.2);
-    } else if(curObj == 1) {
+    } else if(minObj == 1) {
       kd = SPHERE_KD;
-    } else if(curObj == 2) {
+    } else if(minObj == 2) {
       kd = RECT_KD;
     }
 
